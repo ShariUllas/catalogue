@@ -16,7 +16,7 @@ type VariantRepo interface {
 	AddVariant(ctx context.Context, variant *request.Variant) (*int, error)
 	GetVariantByID(ctx context.Context, variantID int) (*Variant, error)
 	Edit(ctx context.Context, variantID int, editedVariant *Variant) error
-	DeleteVariant(ctx context.Context, userID *int) error
+	DeleteVariant(ctx context.Context, variantID *int) error
 }
 
 type variantRepoImpl struct {

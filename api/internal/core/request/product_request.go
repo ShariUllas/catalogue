@@ -9,8 +9,6 @@ import (
 var (
 	// ErrInvalidProductName return when category name is invalid
 	ErrInvalidProductName = fmt.Errorf("invalid product name")
-	// ErrInvalidCategoryID returns when category id is invalid
-	ErrInvalidCategoryID = fmt.Errorf("invalid category id")
 )
 
 // Product - requet model for variant

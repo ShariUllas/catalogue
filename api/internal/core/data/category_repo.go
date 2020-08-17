@@ -4,6 +4,7 @@ import (
 	"catalogue/api/internal/core/request"
 	"context"
 	"database/sql"
+	"fmt"
 	"time"
 
 	"github.com/pkg/errors"
@@ -12,23 +13,32 @@ import (
 // CategoryRepo is repo interface for category
 type CategoryRepo interface {
 	GetCategory(ctx context.Context) ([]*Category, error)
-	AddCategory(ctx context.Context, variant *request.Category) (*int, error)
+	AddCategory(ctx context.Context, category *request.Category) (*int, error)
+	GetCategoryID(ctx context.Context, categoryID int) (*Category, error)
+	EditCategory(ctx context.Context, categoryID int, editedCategory *Category) error
+	DeleteCategory(ctx context.Context, categoryID *int) error
 }
 
-type categoryImpl struct {
+type categoryRepoImpl struct {
 	*sql.DB
 }
 
 // NewCategoryRepo is
 func NewCategoryRepo(db *sql.DB) CategoryRepo {
-	return &categoryImpl{DB: db}
+	return &categoryRepoImpl{DB: db}
 }
+
+var (
+	// ErrCategoryNotFound is returned whne variant is not found
+	ErrCategoryNotFound = fmt.Errorf("category not found")
+)
 
 // Category -
 type Category struct {
 	ID       int
 	Name     string
 	Category *string
+	ParentID int
 }
 
 const addCategoryQuery = `
@@ -46,7 +56,7 @@ VALUES
 returning id;
 `
 
-func (i *categoryImpl) AddCategory(ctx context.Context, category *request.Category) (*int, error) {
+func (i *categoryRepoImpl) AddCategory(ctx context.Context, category *request.Category) (*int, error) {
 	var categoryID *int
 	err := i.QueryRowContext(ctx, addCategoryQuery, category.Name, category.ParentID, time.Now(), time.Now()).Scan(&categoryID)
 	if err != nil {
@@ -64,7 +74,7 @@ FROM   category AS c
               ON c.parent_id = p.id  
 `
 
-func (i *categoryImpl) GetCategory(ctx context.Context) ([]*Category, error) {
+func (i *categoryRepoImpl) GetCategory(ctx context.Context) ([]*Category, error) {
 	var categories []*Category
 	rows, err := i.QueryContext(ctx, getCategoryQuery)
 	if err != nil {
@@ -80,4 +90,63 @@ func (i *categoryImpl) GetCategory(ctx context.Context) ([]*Category, error) {
 		categories = append(categories, &category)
 	}
 	return categories, nil
+}
+
+const getCategoryByIDQuery = `
+SELECT id,
+       name,
+	   parent_id
+FROM   category
+WHERE  id = $1
+`
+
+// GetCategoryID fetches a variant based on id
+func (i *categoryRepoImpl) GetCategoryID(ctx context.Context, categoryID int) (*Category, error) {
+	var category Category
+	if err := i.QueryRowContext(ctx, getCategoryByIDQuery, categoryID).Scan(
+		&category.ID,
+		&category.Name,
+		&category.ParentID,
+	); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, ErrCategoryNotFound
+		}
+		return nil, errors.Wrap(err, "get category by id query scan failed")
+	}
+
+	return &category, nil
+}
+
+const editCategoryQuery = `
+UPDATE category
+SET    NAME = $2,
+	   parent_id = $3,     
+       updated_at = $8
+WHERE  id = $1
+`
+
+func (i *categoryRepoImpl) EditCategory(ctx context.Context, categoryID int, editedCategory *Category) error {
+	_, err := i.ExecContext(ctx, editCategoryQuery, categoryID, editedCategory.Name, editedCategory.ParentID, time.Now())
+	if err != nil {
+		return errors.Wrap(err, "edit category query failed")
+	}
+	return nil
+}
+
+const queryCategoryDelete = `
+UPDATE	category
+	SET	
+		is_deleted = true,
+		updated_at = $2
+WHERE	id = $1;
+`
+
+// Delete soft-deletes an existing category
+func (i *categoryRepoImpl) DeleteCategory(ctx context.Context, categoryID *int) error {
+	_, err := i.ExecContext(ctx, queryCategoryDelete, categoryID, time.Now())
+	if err != nil {
+		return errors.Wrap(err, "delete category query failed")
+	}
+
+	return nil
 }
