@@ -77,3 +77,12 @@ func NewDeleteCategory(r *http.Request) (*int, error) {
 
 	return &categoryID, nil
 }
+
+func NewListCategory(r *http.Request) (*int, error) {
+	categoryID, err := strconv.Atoi(chi.URLParam(r, "category_id"))
+	if err != nil {
+		return nil, ErrInvalidCategoryID
+	}
+
+	return &categoryID, nil
+}

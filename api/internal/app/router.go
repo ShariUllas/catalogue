@@ -28,8 +28,10 @@ func (h *Handler) InitRouter() chi.Router {
 	})
 	r.Route("/category", func(r chi.Router) {
 		r.Get("/", h.GetCategory)
+
 		r.Post("/add", h.AddCategory)
 		r.Route("/{category_id}", func(r chi.Router) {
+			r.Get("/list", h.ListCategory)
 			r.Put("/", h.EditCategory)
 			r.Delete("/", h.DeleteCategory)
 		})

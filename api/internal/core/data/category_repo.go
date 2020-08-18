@@ -17,6 +17,7 @@ type CategoryRepo interface {
 	GetCategoryID(ctx context.Context, categoryID int) (*Category, error)
 	EditCategory(ctx context.Context, categoryID int, editedCategory *Category) error
 	DeleteCategory(ctx context.Context, categoryID *int) error
+	ListCategory(ctx context.Context, id *int) ([]*Category, error)
 }
 
 type categoryRepoImpl struct {
@@ -39,6 +40,31 @@ type Category struct {
 	Name     string
 	Category *string
 	ParentID int
+}
+
+const listCategoryQuery = `
+SELECT id,
+	   name
+FROM category
+WHERE parent_id =$1`
+
+func (i *categoryRepoImpl) ListCategory(ctx context.Context, id *int) ([]*Category, error) {
+
+	var categories []*Category
+	rows, err := i.DB.QueryContext(ctx, listCategoryQuery, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var category Category
+		err := rows.Scan(&category.ID, &category.Name)
+		if err != nil {
+			return nil, err
+		}
+		categories = append(categories, &category)
+	}
+	return categories, nil
 }
 
 const addCategoryQuery = `

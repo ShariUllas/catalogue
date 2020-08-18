@@ -14,6 +14,7 @@ type Category interface {
 	AddCategory(ctx context.Context, category *request.Category) (response.AddCategory, error)
 	EditCategory(ctx context.Context, category *request.Category) error
 	DeleteCategory(ctx context.Context, id *int) error
+	ListCategory(ctx context.Context, id *int) (*response.SubCategory, error)
 }
 
 type categoryImpl struct {
@@ -29,7 +30,19 @@ var (
 func NewCategoryService(categoryRepo data.CategoryRepo) Category {
 	return &categoryImpl{CategoryRepo: categoryRepo}
 }
-
+func (i *categoryImpl) ListCategory(ctx context.Context, id *int) (*response.SubCategory, error) {
+	var sub *response.SubCategory
+	maincategory, err := i.CategoryRepo.GetCategoryID(ctx, *id)
+	if err != nil {
+		return sub, err
+	}
+	res, err := i.CategoryRepo.ListCategory(ctx, id)
+	if err != nil {
+		return sub, err
+	}
+	sub = response.NewCategories(maincategory, res)
+	return sub, nil
+}
 func (i *categoryImpl) AddCategory(ctx context.Context, category *request.Category) (response.AddCategory, error) {
 	categoryID, err := i.CategoryRepo.AddCategory(ctx, category)
 	if err != nil {
